@@ -1,6 +1,7 @@
 require "open-uri"
 require "openssl"
 require "pathname"
+require "readability"
 require "socket"
 require "uri"
 
@@ -12,6 +13,8 @@ server = TCPServer.new(port)
 options = {}
 ARGV.each do |arg|
   case arg
+  when "--readable", "-r"
+    options[:readable] = true
   when "--server", "-s"
     options[:server] = true
   when "--proxy", "-p"
@@ -27,7 +30,7 @@ loop do
     response_code = 200
     response_size = 0
     begin
-      request = client.gets.chomp
+      request = client.gets&.chomp
       sock_domain, remote_port, remote_hostname, remote_ip = client.peeraddr
       action, url = request.split
       uri = URI.parse(url)
@@ -37,6 +40,7 @@ loop do
         begin
           URI.open(url) do |file|
             response = file.read
+            response = Readability::Document.new(response).content if options[:readable]
             response_size = response.size
             client.puts response
           end
