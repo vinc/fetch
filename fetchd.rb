@@ -29,6 +29,7 @@ loop do
   Thread.start(server.accept) do |client|
     response_code = 200
     response_size = 0
+    time = Time.new
     begin
       request = client.gets&.chomp
       sock_domain, remote_port, remote_hostname, remote_ip = client.peeraddr
@@ -121,7 +122,7 @@ loop do
     rescue Forbidden
       response_code = 403
     end
-    puts [remote_ip, "-", "-", request, response_code, response_size].join(" ")
+    printf("%s - - [%s] \"%s\" %d %d\n", remote_ip, time, request, response_code, response_size)
     client.close
   end
 end
