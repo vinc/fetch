@@ -5,6 +5,8 @@ require "readability"
 require "socket"
 require "uri"
 
+class InternalServerError < StandardError; end
+class BadRequest < StandardError; end
 class NotFound < StandardError; end
 class Forbidden < StandardError; end
 
@@ -32,7 +34,10 @@ loop do
     time = Time.new
     begin
       request = client.gets&.chomp
+      raise BadRequest if request.empty? || request.nil?
+
       sock_domain, remote_port, remote_hostname, remote_ip = client.peeraddr
+
       action, url = request.split
       uri = URI.parse(url)
       case uri.scheme
@@ -45,7 +50,9 @@ loop do
             response_size = response.size
             client.puts response
           end
-        rescue OpenURI::HTTPError
+        rescue SocketError
+          raise InternalServerError
+        rescue Errno::ECONNRESET, OpenURI::HTTPError
           raise NotFound
         end
       when "gemini"
@@ -117,10 +124,14 @@ loop do
         end
         true
       end
+    rescue BadRequest
+      response_code = 400
     rescue NotFound, Errno::ENOENT
       response_code = 404
     rescue Forbidden
       response_code = 403
+    rescue InternalServerError
+      response_code = 500
     end
     printf("%s - - [%s] \"%s\" %d %d\n", remote_ip, time, request, response_code, response_size)
     client.close
