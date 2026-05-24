@@ -4,6 +4,7 @@ require "pathname"
 require "readability"
 require "socket"
 require "uri"
+require "word_wrap"
 
 class InternalServerError < StandardError; end
 class BadRequest < StandardError; end
@@ -76,7 +77,7 @@ loop do
             url = headers[1]
           when "20"
             response_size = response.size
-            client.puts response
+            client.puts WordWrap.ww(response, 80)
             break
           else
             raise NotFound
